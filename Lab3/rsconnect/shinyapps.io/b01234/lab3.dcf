@@ -1,0 +1,10 @@
+name: lab3
+title:
+username: b01234
+account: b01234
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 12861563
+bundleId: 9158051
+url: https://b01234.shinyapps.io/lab3/
+version: 1
