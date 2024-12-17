@@ -1,0 +1,229 @@
+---
+title: "HW3 - Hypothesis Testing on Real Madrid's Home VS Away Elo Ratings"
+author: "Bhavya Patel"
+date: "2024-09-22"
+output: ioslides_presentation
+transition: faster
+---
+
+```{=html}
+<style type="text/css">
+body, p, div, h1, h2, h3, h4, h5, u1 {
+  color: black;
+  font-family: Helvetica Neue;
+}
+h2 {
+  color: #8C1D40;
+}
+</style>
+```
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, comment = "")
+library(EUfootball)
+library(ggplot2)
+library(plotly)
+library(dplyr)
+library(tidyr)
+data(Matches)
+real_madrid_data <- subset(Matches, Home == "Real Madrid" | Guest == "Real Madrid")
+```
+
+## EUfootball Library
+
+-   This Library contains match results from seven European men's football leagues, namely Premier League (England), Ligue 1 (France), Bundesliga (Germany), Serie A (Italy), Primera Division (Spain), Eredivisie (The Netherlands), Super Lig (Turkey). This includes seasons 2010/2011 until 2019/2020 and exciting covariates.
+-   The Elo rating of each team is represented as EloHome for the Home team and EloGuest for the Away or the Guest team.
+-   League represents the leagues from which the two teams are based.
+
+## Test of Hypothesis {.bigger}
+
+-   Hypothesis testing is a statistical method used to make inferences about a population based on sample data.
+-   Hypothesis testing procedure relies on using point estimates from a random sample.
+-   H~0~ is the Null Hypothesis.
+-   H~1~ is the Alternate Hypothesis.
+-   We'll use a specific use-case of the Hypothesis test to find a difference in the performance of Home and Away Games of Real Madrid (soccer club from La Liga Spain).
+
+## Real Madrid
+
+Real Madrid, is a football club based in Madrid, Spain. The club compete in La Liga, the top tier of Spanish football.\
+\
+In domestic football, the club have won 71 trophies: a record 36 La Liga titles, 20 Copa del Rey, 13 Supercopa de España, a Copa Eva Duarte, and a Copa de la Liga.[14] In international football, Real Madrid have won a record 34 trophies: a record 15 European Cup/UEFA Champions League titles, a record six UEFA Super Cups, two UEFA Cups, a joint record two Latin Cups, a record one Iberoamerican Cup, and a record eight FIFA Club World championships.\
+
+## Real Madrid's Home Vs Away Goals
+
+```{r rm-goal, echo=FALSE, warning=FALSE}
+real_madrid_goal <- real_madrid_data %>%
+  mutate(GoalsHomeOrAway = ifelse(Home == "Real Madrid", "Home", "Away"),
+         GoalsScored = ifelse(Home == "Real Madrid", Goals90Home, Goals90Guest),
+         Season = paste(SeasonFrom, SeasonTo, sep = "-")) 
+
+
+goals_by_season <- real_madrid_goal %>%
+  group_by(Season, GoalsHomeOrAway) %>%
+  summarise(TotalGoals = sum(GoalsScored, na.rm = TRUE), .groups = "drop") %>%
+  ungroup()
+
+ggplot(goals_by_season, aes(x = Season, y = TotalGoals, fill = GoalsHomeOrAway)) +
+  geom_bar(stat = "identity", position = "dodge") + 
+  labs(title = "Real Madrid's Home vs Away Goals Per Season",
+       x = "Seasons",
+       y = "Total Goals",
+       fill = "Game Location") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+## El Classico Record for Real Madrid
+
+El Clásico meaning "The Classic", is the name given to any football match between rival clubs Barcelona and Real Madrid.
+
+```{r el-classico}
+el_classico_data <- Matches %>%
+  filter((Home == "Real Madrid" & Guest == "Barcelona") | 
+           (Home == "Barcelona" & Guest == "Real Madrid"))
+
+el_classico_data <- el_classico_data %>%
+  mutate(Result = case_when(
+    (Home == "Real Madrid" & Goals90Home > Goals90Guest) ~ "Win",
+    (Home == "Real Madrid" & Goals90Home < Goals90Guest) ~ "Loss",
+    (Home == "Real Madrid" & Goals90Home == Goals90Guest) ~ "Draw",
+    (Home == "Barcelona" & Goals90Home < Goals90Guest) ~ "Win",
+    (Home == "Barcelona" & Goals90Home > Goals90Guest) ~ "Loss",
+    (Home == "Barcelona" & Goals90Home == Goals90Guest) ~ "Draw"
+  ))
+
+el_classico_data <- el_classico_data %>%
+  mutate(Location = ifelse(Home == "Real Madrid", "Home", "Away"))
+
+
+outcomes_summary <- el_classico_data %>%
+  group_by(Location, Result) %>%
+  summarise(Count = n(), .groups = "drop")
+
+
+ggplot(outcomes_summary, aes(x = Location, y = Count, fill = Result)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "El Clásico Record of Real Madrid",
+       x = "Match Location",
+       y = "Matches",
+       fill = "Result") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+```
+
+## Paired T-Test Hypothesis {.bigger}
+
+-   The paired sample t-test, sometimes called the dependent sample t-test, is a statistical procedure used to determine whether the mean difference between two sets of observations is zero.
+-   We are using a Paired T-test to test whether a statistically significant difference exists between the Elo ratings of Real Madrid's home and guest games.
+
+## Important Terms for Paired T-Test {.bigger}
+
+-   H~0~: Null Hypothesis
+-   H~1~: Alternate Hypothesis
+-   n-1: is the degrees of freedom
+-   d~i~: Difference between two paired sample on i^th^ observation.
+-   s~d~: Standard Deviation
+-   t: Test Statistics
+-   p: p-value
+-   $\alpha$: Significance Level
+
+## Steps to complete Paired T-Test
+
+1.  Hypothesis Formulation
+2.  Calculate the Mean Difference:
+3.  Calculate the Standard Deviation of Differences
+4.  Calculate the t-statistic:
+5.  Calculate the p-value
+6.  Conclusion and Inference
+
+## Hypothesis Formulation
+
+Null Hypothesis H~0~: Assuming there is no significant difference between Real Madrid’s Elo ratings at home and away.\
+\
+H~0~ : $\mu$~home~ = $\mu$~away~\
+where $\mu$~home~ is the mean Elo rating at home and $\mu$~away~ is the mean Elo rating away.
+
+Alternative Hypothesis H~1~: There is a significant difference between Real Madrid’s Elo ratings at home and away.\
+\
+H~0~ : $\mu$~home~ $≠$ $\mu$~away~
+
+## Calculate the Mean Difference:
+
+For each match, calculate the difference between the Elo ratings of the home and guest teams: d~i~ = $\mu$~home,i~ - $\mu$~guest,i~
+
+Formula to calculate the average of these differences $\bar{d}$:\
+\
+$\bar{d} = \frac{1}{n} \sum_{i=1}^n d_i$
+
+```{r md}
+real_madrid_data$eloDifference <- real_madrid_data$eloHome - real_madrid_data$eloGuest
+mean_difference <- mean(real_madrid_data$eloDifference, na.rm = TRUE)
+paste("The Average Mean Difference =", mean_difference, sep = " ")
+```
+
+## Calculate the Standard Deviation of Differences
+
+Formula to calculate the standard deviation of the differences, s~d~:\
+
+$s_d = \sqrt{\frac{1}{n-1} \sum_{i=1}^n (d_i - \bar{d})^2}$
+
+```{r sd}
+n <- sum(!is.na(real_madrid_data$eloDifference))
+std_deviation_difference <- sqrt(sum((real_madrid_data$eloDifference - mean_difference)^2, na.rm = TRUE) / (n - 1))
+
+paste("The Standard Deviation Difference=",std_deviation_difference,sep=" ")
+```
+
+## Calculate the t-statistic:
+
+Formula to calculate the test statistic, t:\
+\
+$t = \frac{\bar{d}}{s_d / \sqrt{n}}$
+
+```{r tstat}
+t_statistic <- mean_difference / (std_deviation_difference / sqrt(n))
+paste("The test statistics, t=",t_statistic,sep=" ")
+```
+
+## Calculate the p-value
+
+The p-value can be calculated using R’s built-in t.test() function. We will be testing the p-value at a 95% confidence interval.\
+
+```{r t-test, echo=TRUE}
+
+t_test_result <- t.test(real_madrid_data$eloHome, 
+        real_madrid_data$eloGuest, 
+        paired = TRUE, conf.level = 0.95, method="paired")
+p=t_test_result$p.value
+paste("The p-value =",p,sep=" ")
+```
+
+## Conclusion and Inference
+
+The goal of the test was to determine if there is a significant difference between Real Madrid’s Elo ratings when playing at home versus away.\
+
+The t-statistic is t = 0.0857, which is a very small value. This suggests that the difference between home and away Elo ratings is minimal compared to the variability within the data.\
+
+The p-value is p = 0.9318, which is much higher than the common significance threshold of 0.05. This indicates that we fail to reject the null hypothesis.\
+
+In other words, there is no statistically significant difference between Real Madrid's Elo ratings at home and away.
+
+## Real Madrid's Elo Home VS Away
+
+```{r rm-elo, echo=FALSE, warning=FALSE}
+real_madrid_elo <- real_madrid_data %>%
+  mutate(Season = paste(SeasonFrom, SeasonTo, sep = "-"))  # Combine SeasonFrom and SeasonTo
+
+elo_summary <- real_madrid_elo %>%
+  group_by(Season) %>%
+  summarise(avg_eloHome = mean(eloHome, na.rm = TRUE),
+            avg_eloGuest = mean(eloGuest, na.rm = TRUE)) %>%
+  ungroup()
+
+plot_ly() %>%
+  add_lines(data = elo_summary, x = ~Season, y = ~avg_eloHome, name = "Average Elo Home", line = list(color = 'blue')) %>%
+  add_lines(data = elo_summary, x = ~Season, y = ~avg_eloGuest, name = "Average Elo Guest", line = list(color = 'red')) %>%
+  layout(title = "Average Elo Ratings of Real Madrid (Home vs Away)",
+         xaxis = list(title = "Season"),
+         yaxis = list(title = "Average Elo Rating"),
+         showlegend = TRUE)
+```
